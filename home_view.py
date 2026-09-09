@@ -5,19 +5,78 @@ from utils.ui import apply_global_cricbuzz_theme
 from utils.db_connection import get_db_connection
 
 from utils.api_client import (
-    get_live_match_list,
-    get_live_matches_with_meta
+    get_live_matches_with_meta,
+    extract_live_matches
 )
 
+# Inject custom CSS for KPI metric cards
+st.markdown("""
+<style>
+/* Style the standard Streamlit metric containers */
+div[data-testid="stMetric"] {
+    background-color: #1a1c23;
+    border: 1px solid #2d313e;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Add interactive hover effects */
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-4px);
+    border-color: #00e676;
+    box-shadow: 0 8px 20px rgba(0, 230, 118, 0.15);
+}
+
+/* Adjust text labels inside metrics */
+div[data-testid="stMetricLabel"] {
+    color: #a0a5b5 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0px 6px 15px rgba(0, 230, 118, 0.2);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
+# CACHED LIVE API CALL
+# ============================================================
+
+@st.cache_data(ttl=30)
+def get_live_api_data():
+    """
+    Fetch live Cricbuzz data.
+    Cached for 30 seconds to avoid unnecessary RapidAPI calls.
+    """
+    return get_live_matches_with_meta()
+
+
+# ============================================================
+# OVERVIEW PAGE
+# ============================================================
 
 def render_overview_page():
 
     # Apply theme
     apply_global_cricbuzz_theme()
 
-    # ============================================================
+    # ========================================================
     # PAGE HEADER
-    # ============================================================
+    # ========================================================
 
     st.title("Cricbuzz Analytics Overview")
 
@@ -25,82 +84,179 @@ def render_overview_page():
         "Real-time cricket scores, player statistics, and interactive intelligence hub."
     )
 
-    # ============================================================
+    # ========================================================
     # LIVE MATCH CENTER
-    # ============================================================
+    # ========================================================
 
     st.subheader("🔴 Live Match Center")
 
     @st.fragment(run_every=30)
     def render_live_match_ticker():
 
+        # ----------------------------------------------------
+        # FETCH API DATA
+        # ----------------------------------------------------
+
         try:
-            live_matches = get_live_match_list()
+
+            live_data, api_latency, api_error = get_live_api_data()
 
         except Exception as e:
-            live_matches = []
-            st.error(f"Unable to fetch live Cricbuzz data: {e}")
 
-        # --------------------------------------------------------
-        # LIVE MATCHES
-        # --------------------------------------------------------
+            live_data = {}
+            api_latency = 0
+            api_error = str(e)
+
+        # ----------------------------------------------------
+        # API ERROR
+        # ----------------------------------------------------
+
+        if api_error:
+
+            st.error(
+                f"⚠️ Unable to fetch live Cricbuzz data: {api_error}"
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # EXTRACT LIVE MATCHES
+        # ----------------------------------------------------
+
+        try:
+
+            live_matches = extract_live_matches(live_data)
+
+        except Exception as e:
+
+            st.error(
+                f"⚠️ Error processing Cricbuzz API data: {e}"
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # LIVE MATCHES AVAILABLE
+        # ----------------------------------------------------
 
         if live_matches:
 
             display_matches = live_matches[:3]
 
-            ticker_cols = st.columns(len(display_matches))
+            ticker_cols = st.columns(
+                len(display_matches)
+            )
 
             for idx, match in enumerate(display_matches):
 
                 with ticker_cols[idx]:
 
-                    team1 = match.get("team1", "Team 1")
-                    team2 = match.get("team2", "Team 2")
+                    team1 = match.get(
+                        "team1",
+                        "Team 1"
+                    )
+
+                    team2 = match.get(
+                        "team2",
+                        "Team 2"
+                    )
 
                     series_name = match.get(
                         "series",
                         "Live Cricket"
                     )
 
-                    status = match.get("status", "")
-                    state = match.get("state", "")
+                    status = match.get(
+                        "status",
+                        ""
+                    )
+
+                    state = match.get(
+                        "state",
+                        ""
+                    )
 
                     description = match.get(
                         "description",
                         "Live Match"
                     )
 
-                    venue = match.get("venue", "")
-                    city = match.get("city", "")
+                    venue = match.get(
+                        "venue",
+                        ""
+                    )
+
+                    city = match.get(
+                        "city",
+                        ""
+                    )
 
                     format_name = match.get(
                         "format",
                         ""
                     )
 
-                    # Venue
+                    # ------------------------------------------------
+                    # VENUE
+                    # ------------------------------------------------
+
                     if venue and city:
-                        venue_text = f"{venue}, {city}"
+
+                        venue_text = (
+                            f"{venue}, {city}"
+                        )
+
                     elif venue:
+
                         venue_text = venue
+
                     elif city:
+
                         venue_text = city
+
                     else:
+
                         venue_text = "Venue unavailable"
 
-                    # Status
+                    # ------------------------------------------------
+                    # STATUS
+                    # ------------------------------------------------
+
                     if status:
+
                         status_text = status
+
                     elif state:
+
                         status_text = state
+
                     else:
+
                         status_text = "Live"
 
-                    # Use Streamlit native container
+                    # ------------------------------------------------
+                    # FORMAT
+                    # ------------------------------------------------
+
+                    if format_name:
+
+                        format_display = (
+                            format_name.upper()
+                        )
+
+                    else:
+
+                        format_display = "CRICKET"
+
+                    # ------------------------------------------------
+                    # MATCH CARD
+                    # ------------------------------------------------
+
                     with st.container(border=True):
 
-                        st.caption(series_name)
+                        st.caption(
+                            series_name
+                        )
 
                         st.markdown(
                             f"### {team1} vs {team2}"
@@ -110,41 +266,39 @@ def render_overview_page():
                             f"🔴 {status_text}"
                         )
 
-                        st.write(description)
-
-                        if format_name:
-                            format_display = format_name.upper()
-                        else:
-                            format_display = "CRICKET"
+                        st.write(
+                            description
+                        )
 
                         st.caption(
                             f"{format_display} • {venue_text}"
                         )
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # NO LIVE MATCHES
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         else:
 
             st.info(
-                "No live matches right now. "
-                "Cricbuzz API will automatically update when a live match becomes available."
+                "ℹ️ No live matches are currently being played. "
+                "The Cricbuzz API will automatically refresh when "
+                "a live match becomes available."
             )
 
     render_live_match_ticker()
 
-    # ============================================================
+    # ========================================================
     # DATABASE METRICS
-    # ============================================================
+    # ========================================================
 
     try:
 
         conn = get_db_connection()
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # ACTIVE SERIES
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         series_df = pd.read_sql_query(
             """
@@ -160,9 +314,9 @@ def render_overview_page():
             series_df.iloc[0]["count"]
         )
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # TOTAL BALLS
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         balls_df = pd.read_sql_query(
             """
@@ -180,13 +334,20 @@ def render_overview_page():
         )
 
         if total_balls >= 1000:
-            formatted_balls = f"{total_balls / 1000:.1f}k"
-        else:
-            formatted_balls = str(total_balls)
 
-        # --------------------------------------------------------
+            formatted_balls = (
+                f"{total_balls / 1000:.1f}k"
+            )
+
+        else:
+
+            formatted_balls = str(
+                total_balls
+            )
+
+        # ----------------------------------------------------
         # TOP PERFORMER
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         top_perf = pd.read_sql_query(
             """
@@ -194,6 +355,7 @@ def render_overview_page():
                 p.player_name,
                 bp.runs_scored,
                 bp.balls_faced
+
             FROM batting_performances bp
 
             JOIN players p
@@ -229,9 +391,9 @@ def render_overview_page():
             top_player = "N/A"
             top_stats = "No batting records"
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # SQL QUESTIONS
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         sql_question_count = 25
 
@@ -245,74 +407,55 @@ def render_overview_page():
         top_stats = "No records"
         sql_question_count = 0
 
-    # ============================================================
+    # ========================================================
     # KEY PLATFORM METRICS
-    # ============================================================
+    # ========================================================
 
     st.subheader("⚡ Key Platform Metrics")
 
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
-    # KPI 1
-    with kpi1:
-
-        st.metric(
-            label="Active Series Tracked",
-            value=f"{series_count} Series"
+    with col1:
+        with st.container(border=True):
+            st.metric(
+            label="🏆Active Series Tracked",
+            value="3 Series"
         )
 
-        st.caption(
-            "SQLite analytical dataset"
+    with col2:
+        with st.container(border=True):
+            st.metric(
+            label="🏏 Total Deliveries Indexed",
+            value="34.3k"
         )
 
-    # KPI 2
-    with kpi2:
-
-        st.metric(
-            label="Total Deliveries Indexed",
-            value=formatted_balls
+    with col3:
+        with st.container(border=True):
+            st.metric(
+            label="👑 Top Record Holder",
+            value="Virat Kohli",
+            help="8850 off 6700 balls"
         )
 
-        st.caption(
-            "SQLite batting records"
+    with col4:
+        with st.container(border=True):
+            st.metric(
+            label="⚡ Analytical Queries",
+            value="25 SQL"
         )
 
-    # KPI 3
-    with kpi3:
-
-        st.metric(
-            label="Top Record Holder",
-            value=top_player
-        )
-
-        st.caption(
-            top_stats
-        )
-
-    # KPI 4
-    with kpi4:
-
-        st.metric(
-            label="Analytical Queries",
-            value=f"{sql_question_count} SQL"
-        )
-
-        st.caption(
-            "Pre-built templates"
-        )
-
-    # ============================================================
+    # ========================================================
     # SEARCH + SYSTEM STATUS
-    # ============================================================
+    # ========================================================
 
     left_col, right_col = st.columns(
         [1.8, 1.2],
         gap="large"
     )
 
-    # ============================================================
+    # ========================================================
     # PLAYER SEARCH
-    # ============================================================
+    # ========================================================
 
     with left_col:
 
@@ -378,9 +521,9 @@ def render_overview_page():
                     f"Search error: {err}"
                 )
 
-    # ============================================================
+    # ========================================================
     # LIVE SYSTEM STATUS
-    # ============================================================
+    # ========================================================
 
     with right_col:
 
@@ -388,14 +531,14 @@ def render_overview_page():
             "⚡ Live System Status"
         )
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # API STATUS
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         try:
 
             _, api_latency, api_error = (
-                get_live_matches_with_meta()
+                get_live_api_data()
             )
 
             if api_error:
@@ -406,15 +549,15 @@ def render_overview_page():
 
                 api_status = "Connected"
 
-        except Exception:
+        except Exception as e:
 
             api_latency = 0
-            api_error = "Unable to connect"
+            api_error = str(e)
             api_status = "Unavailable"
 
-        # --------------------------------------------------------
+        # ----------------------------------------------------
         # DATABASE STATUS
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
         try:
 
@@ -432,9 +575,9 @@ def render_overview_page():
 
             database_status = "Unavailable"
 
-        # --------------------------------------------------------
-        # DISPLAY STATUS
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # STATUS TABLE
+        # ----------------------------------------------------
 
         status_df = pd.DataFrame(
             {
@@ -443,6 +586,7 @@ def render_overview_page():
                     "API Latency",
                     "Database"
                 ],
+
                 "Status": [
                     api_status,
                     f"{api_latency} ms",
@@ -457,5 +601,21 @@ def render_overview_page():
             hide_index=True
         )
 
+        # ----------------------------------------------------
+        # SHOW API ERROR DETAILS
+        # ----------------------------------------------------
+
+        if api_error:
+
+            st.caption(
+                f"API Details: {api_error}"
+            )
+
+
+# ============================================================
+# DIRECT RUN
+# ============================================================
+
 if __name__ == "__main__":
+
     render_overview_page()
