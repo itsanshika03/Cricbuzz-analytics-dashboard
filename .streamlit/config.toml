@@ -1,0 +1,9 @@
+[theme]
+primaryColor = "#00D2C4"                 # Electric Cyan/Teal
+backgroundColor = "#121316"              # Matte Dark Canvas Background
+secondaryBackgroundColor = "#1C1E24"     # Card Surface & Sidebar Color
+textColor = "#E2E8F0"                    # Off-white Text
+font = "sans serif"
+
+[server]
+headless = true 
