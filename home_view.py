@@ -413,36 +413,130 @@ def render_overview_page():
 
     st.subheader("⚡ Key Platform Metrics")
 
+    # Inject Custom Styling for Modern KPI Cards
+    st.markdown("""
+    <style>
+    .kpi-wrapper {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .kpi-wrapper:hover {
+        transform: translateY(-5px);
+        border-color: rgba(0, 230, 118, 0.4);
+        box-shadow: 0 10px 25px rgba(0, 230, 118, 0.15);
+    }
+
+    /* Accent Glow Line on Top */
+    .kpi-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--accent-gradient, linear-gradient(90deg, #00e676, #00b0ff));
+        border-radius: 12px 12px 0 0;
+    }
+
+    .kpi-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .kpi-title {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+
+    .kpi-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .kpi-main-val {
+        color: #ffffff;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+    }
+
+    .kpi-sub-label {
+        color: #64748b;
+        font-size: 0.72rem;
+        font-weight: 500;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Render KPI Columns
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        with st.container(border=True):
-            st.metric(
-            label="🏆Active Series Tracked",
-            value="3 Series"
-        )
+        st.markdown("""
+    <div class="kpi-wrapper" style="--accent-gradient: linear-gradient(90deg, #00e676, #1de9b6);">
+        <div class="kpi-top-row">
+            <span class="kpi-title">Active Series</span>
+            <div class="kpi-badge" style="background: rgba(0, 230, 118, 0.12);">🏆</div>
+        </div>
+        <div class="kpi-main-val">3 Series</div>
+        <div class="kpi-sub-label">SQLite analytical dataset</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with col2:
-        with st.container(border=True):
-            st.metric(
-            label="🏏 Total Deliveries Indexed",
-            value="34.3k"
-        )
+        st.markdown("""
+    <div class="kpi-wrapper" style="--accent-gradient: linear-gradient(90deg, #29b6f6, #0288d1);">
+        <div class="kpi-top-row">
+            <span class="kpi-title">Total Deliveries</span>
+            <div class="kpi-badge" style="background: rgba(41, 182, 246, 0.12);">🏏</div>
+        </div>
+        <div class="kpi-main-val">34.3k</div>
+        <div class="kpi-sub-label">SQLite batting records</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with col3:
-        with st.container(border=True):
-            st.metric(
-            label="👑 Top Record Holder",
-            value="Virat Kohli",
-            help="8850 off 6700 balls"
-        )
+        st.markdown("""
+    <div class="kpi-wrapper" style="--accent-gradient: linear-gradient(90deg, #ab47bc, #7b1fa2);">
+        <div class="kpi-top-row">
+            <span class="kpi-title">Top Record Holder</span>
+            <div class="kpi-badge" style="background: rgba(171, 71, 188, 0.12);">👑</div>
+        </div>
+        <div class="kpi-main-val">Virat Kohli</div>
+        <div class="kpi-sub-label">8850 off 6700 balls</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with col4:
-        with st.container(border=True):
-            st.metric(
-            label="⚡ Analytical Queries",
-            value="25 SQL"
-        )
+        st.markdown("""
+    <div class="kpi-wrapper" style="--accent-gradient: linear-gradient(90deg, #ffca28, #f57c00);">
+        <div class="kpi-top-row">
+            <span class="kpi-title">Analytical Queries</span>
+            <div class="kpi-badge" style="background: rgba(255, 202, 40, 0.12);">⚡</div>
+        </div>
+        <div class="kpi-main-val">25 SQL</div>
+        <div class="kpi-sub-label">Pre-built templates</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ========================================================
     # SEARCH + SYSTEM STATUS
